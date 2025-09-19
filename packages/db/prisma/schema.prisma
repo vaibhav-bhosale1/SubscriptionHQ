@@ -1,0 +1,62 @@
+// packages/db/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  name               String?
+  razorpayCustomerId String?       @unique
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  Subscription       Subscription?
+}
+
+// Plan model for different subscription tiers.
+// This is an improvement over the original brief for better data normalization.
+model Plan {
+  id             String         @id @default(cuid())
+  name           String         // e.g., "Pro Plan", "Basic Plan"
+  razorpayPlanId String         @unique
+  price          Int            // Price in smallest currency unit (e.g., paise)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  Subscription   Subscription[]
+}
+
+model Subscription {
+  id                     String    @id @default(cuid())
+  razorpaySubscriptionId String    @unique
+  status                 SubStatus
+  currentPeriodEnd       DateTime
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  userId                 String    @unique
+  user                   User      @relation(fields: [userId], references: [id])
+  planId                 String
+  plan                   Plan      @relation(fields: [planId], references: [id])
+}
+
+model Metric {
+  id              String   @id @default(cuid())
+  date            DateTime @db.Date
+  mrr             Int      // Monthly Recurring Revenue in paise
+  churnRate       Float
+  activeCustomers Int
+  createdAt       DateTime @default(now())
+  @@unique([date])
+}
+
+enum SubStatus {
+  trialing
+  active
+  past_due
+  canceled
+}

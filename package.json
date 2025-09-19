@@ -1,0 +1,20 @@
+
+{
+  "name": "SubscriptionHQ",
+  "version": "1.0.0",
+  "description": "A subscription billing and analytics backend.",
+  "main": "index.js",
+  
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "db:migrate": "npm run migrate -w db",
+    "db:studio": "npm run studio -w db",
+    "dev:backend": "npm run dev -w backend"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC"
+}
