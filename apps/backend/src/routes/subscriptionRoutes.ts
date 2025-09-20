@@ -1,76 +1,85 @@
-// apps/backend/src/routes/subscriptionRoutes.ts
-
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from 'db';
+import { PrismaClient, SubStatus } from '@prisma/client';
 import { razorpay } from '../services/razorpay';
 
 const prisma = new PrismaClient();
 const router = Router();
 
-// Endpoint to create a new user and subscription
-// POST /api/subscriptions
+interface RazorpaySubscriptionResponse {
+  id: string;
+  status: string;
+  current_end?: number | null;
+  [key: string]: any;
+}
+
 router.post('/', async (req: Request, res: Response) => {
-  const { email, name, planId } = req.body; // [cite: 81]
+  const { email, name, planId } = req.body;
+
 
   if (!email || !name || !planId) {
     return res.status(400).json({ error: 'Email, name, and planId are required.' });
   }
 
   try {
-    // 1. Find the plan in our database to get the Razorpay Plan ID
-    const plan = await prisma.plan.findUnique({
-      where: { id: planId },
-    });
-
-    if (!plan) {
-      return res.status(404).json({ error: 'Plan not found.' });
+    const plan = await prisma.plan.findUnique({ where: { id: planId } });
+    if (!plan || !plan.razorpayPlanId) {
+        return res.status(404).json({ error: 'Plan not found or not configured correctly.' });
     }
 
-    // 2. Create a Customer in Razorpay [cite: 89]
-    const razorpayCustomer = await razorpay.customers.create({
-      name,
-      email,
+    const existingSubscription = await prisma.subscription.findFirst({
+      where: { user: { email: email } }
     });
+    if (existingSubscription) {
+      return res.status(409).json({ error: 'User is already subscribed.' });
+    }
 
-    // 3. Create a Subscription in Razorpay [cite: 90]
-    const razorpaySubscription = await razorpay.subscriptions.create({
+    const razorpayCustomer = await razorpay.customers.create({ name, email });
+
+    const razorpaySubscription: RazorpaySubscriptionResponse = await razorpay.subscriptions.create({
       plan_id: plan.razorpayPlanId,
       customer_id: razorpayCustomer.id,
-      total_count: 12, // For a yearly plan; adjust as needed
+      total_count: 12,
       quantity: 1,
+    } as any);
+
+    const subscriptionStatus: SubStatus = 'active';
+
+    const defaultEndDate = new Date();
+    defaultEndDate.setMonth(defaultEndDate.getMonth() + 1);
+
+    const periodEnd = razorpaySubscription.current_end
+      ? new Date(razorpaySubscription.current_end * 1000)
+      : defaultEndDate;
+    const user = await prisma.user.upsert({
+      where: { email },
+      update: { name, razorpayCustomerId: razorpayCustomer.id },
+      create: { email, name, razorpayCustomerId: razorpayCustomer.id },
     });
 
-    // 4. Save the new User and Subscription in our database [cite: 91]
-    const user = await prisma.user.create({
+    await prisma.subscription.create({
       data: {
-        email,
-        name,
-        razorpayCustomerId: razorpayCustomer.id,
-        Subscription: {
-          create: {
-            razorpaySubscriptionId: razorpaySubscription.id,
-            status: 'active', // Set status to active [cite: 92]
-            planId: plan.id,
-            // Razorpay returns period end in seconds, convert to ISOString
-            currentPeriodEnd: new Date(razorpaySubscription.current_end * 1000),
-          },
-        },
-      },
-      include: {
-        Subscription: true,
-      },
+        userId: user.id,
+        planId: plan.id,
+        razorpaySubscriptionId: razorpaySubscription.id,
+        status: subscriptionStatus,
+        currentPeriodEnd: periodEnd,
+      }
     });
 
-    // 5. Send the response back to the client [cite: 82]
     res.status(201).json({
-      subscriptionId: user.Subscription?.razorpaySubscriptionId,
-      status: user.Subscription?.status,
+      subscriptionId: razorpaySubscription.id,
+      status: subscriptionStatus,
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Subscription creation failed:', error);
-    res.status(500).json({ error: 'Failed to create subscription.' });
+    res.status(error.statusCode || 500).json({
+      message: 'Failed to create subscription.',
+      error: error.error || { code: 'INTERNAL_SERVER_ERROR', description: error.message },
+    });
   }
 });
 
+
 export default router;
+

@@ -1,6 +1,6 @@
 
 {
-  "name": "SubscriptionHQ",
+  "name": "subscriptionhq",
   "version": "1.0.0",
   "description": "A subscription billing and analytics backend.",
   "main": "index.js",

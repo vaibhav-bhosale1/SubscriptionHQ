@@ -1,26 +1,35 @@
-// apps/backend/src/index.ts
+import dotenv from "dotenv";
+import path from 'path';
+
+
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 
 import express from 'express';
 import cors from 'cors';
-import 'dotenv/config';
 import subscriptionRoutes from './routes/subscriptionRoutes';
+
+console.log('Loaded RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? 'Yes' : 'No');
+console.log('Loaded RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? 'Yes' : 'No');
+
 
 const app = express();
 const PORT = process.env.PORT || 4000;
 
-// Middleware
-app.use(cors()); // Enable Cross-Origin Resource Sharing
-app.use(express.json()); // To parse JSON request bodies
-app.use(express.urlencoded({ extended: true })); // To parse URL-encoded bodies
 
-// API Routes
+app.use(cors());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Routes
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is healthy' });
 });
 
-app.use('/api/subscriptions', subscriptionRoutes); // [cite: 80]
+app.use('/api/subscriptions', subscriptionRoutes);
 
-// Start the server
+// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Server running at http://localhost:${PORT}`);
 });
+
