@@ -2,12 +2,15 @@ import dotenv from "dotenv";
 import path from 'path';
 
 
+
+
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 
 import express from 'express';
 import cors from 'cors';
 import subscriptionRoutes from './routes/subscriptionRoutes';
+import razorpayWebhookHandler from './webhooks/razorpayWebhook';
 
 console.log('Loaded RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? 'Yes' : 'No');
 console.log('Loaded RAZORPAY_KEY_SECRET:', process.env.RAZORPAY_KEY_SECRET ? 'Yes' : 'No');
@@ -18,6 +21,13 @@ const PORT = process.env.PORT || 4000;
 
 
 app.use(cors());
+
+app.post(
+  '/api/webhooks/razorpay',
+  express.raw({ type: 'application/json' }), // Use the raw body parser
+  razorpayWebhookHandler
+);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
