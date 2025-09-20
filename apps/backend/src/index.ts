@@ -12,6 +12,7 @@ import cors from 'cors';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import razorpayWebhookHandler from './webhooks/razorpayWebhook';
 import { startScheduler } from './jobs/scheduler';
+import metricsRoutes from './routes/metricsRoutes';
 import { calculateDailyMetrics, calculateMonthlyChurn } from './services/metricsCalculator';
 
 console.log('Loaded RAZORPAY_KEY_ID:', process.env.RAZORPAY_KEY_ID ? 'Yes' : 'No');
@@ -48,6 +49,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/metrics', metricsRoutes)
 
 // Start server
 app.listen(PORT, () => {
