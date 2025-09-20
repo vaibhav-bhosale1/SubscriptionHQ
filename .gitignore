@@ -8,3 +8,5 @@ node_modules
 
 node_modules
 /packages/db/.env
+
+/apps/backend/.env
